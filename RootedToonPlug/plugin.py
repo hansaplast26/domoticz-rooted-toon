@@ -61,7 +61,10 @@ class BasePlugin:
             programOptions= {"LevelActions": "||||", "LevelNames": "|Away|Sleep|Home|Comfort|Manual", "LevelOffHidden": "true", "SelectorStyle": "0"}
             Domoticz.Device(Name="Program", Unit=4, Image=15, TypeName="Selector Switch", Options=programOptions).Create()
 
+            Domoticz.Device(Name="Boiler pressure", Unit=5, TypeName="Pressure").Create()
+
             #Gas
+
 #            Domoticz.Device(Name="Current Gas Flow", Unit=5, TypeName="Gas").Create()
 #            Domoticz.Device(Name="Current Gas Quantity", Unit=6, TypeName="Gas").Create()
 
@@ -174,9 +177,11 @@ class BasePlugin:
     def onMessageBoilerInfo(self, Connection, Response):
         Domoticz.Debug("onMessageBoilerInfo called")
         if 'boilerPressure' in Response:
-            #todo: implementation
             Domoticz.Debug("boilerpressure: "+("%.1f" % Response['boilerPressure']))
+            strBoilerPressure="%.1f" % Response['boilerPressure']
+            Devices[5].Update(nValue=0, sValue=strBoilerPressure)
 
+        return
 
     def onMessageZwaveInfo(self, Connection, Response):
         #todo implementation, maybe.
