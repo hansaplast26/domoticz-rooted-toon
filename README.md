@@ -8,5 +8,5 @@ Install this plugin by copying the RootedToonPlug directory (including plugin.py
 
 Currently only basic functionality such as temperature, setpoint, thermostat program is included. more to come
 
-Use at your own risk
+Use at your own risk.
 Only tested with Toon v1.
