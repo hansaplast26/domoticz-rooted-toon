@@ -93,7 +93,7 @@ class BasePlugin:
         self.toonConnSetControl= Domoticz.Connection(Name="Toon Connection", Transport="TCP/IP", Protocol="HTTP", Address=Parameters["Address"], Port=Parameters["Port"])
 
 
-        Domoticz.Heartbeat(10)
+        Domoticz.Heartbeat(5)
         return True
 
 
