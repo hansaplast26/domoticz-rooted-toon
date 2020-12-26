@@ -145,7 +145,7 @@ class BasePlugin:
         if 'result' in Response:
             result=Response['result']
 
-        Domoticz.Log("Toon getThermostatInfo command executed with status: " + result)
+        Domoticz.Debug("Toon getThermostatInfo command executed with status: " + result)
         if result!='ok':
             return
 
@@ -195,8 +195,8 @@ class BasePlugin:
         try:
             strData = Data["Data"].decode("utf-8", "ignore")
         except:
-            Debug.Log("Something fishy")
-            Debug.Log(Data["Data"])
+            Domoticz.Log("Something fishy")
+            Domoticz.Log(Data["Data"])
             return
 
         Domoticz.Debug(strData)
@@ -256,10 +256,10 @@ class BasePlugin:
         #tbd send to Toon
 
     def onNotification(self, Name, Subject, Text, Status, Priority, Sound, ImageFile):
-        Domoticz.Log("Notification: " + Name + "," + Subject + "," + Text + "," + Status + "," + str(Priority) + "," + Sound + "," + ImageFile)
+        Domoticz.Debug("Notification: " + Name + "," + Subject + "," + Text + "," + Status + "," + str(Priority) + "," + Sound + "," + ImageFile)
 
     def onDisconnect(self, Connection):
-        Domoticz.Log("onDisconnect called")
+        Domoticz.Debug("onDisconnect called")
 
     def onHeartbeat(self):
         Domoticz.Debug("onHeartbeat called")
