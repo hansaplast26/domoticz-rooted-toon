@@ -206,7 +206,7 @@ class BasePlugin:
 
 
         if (len(toonInformation)==4):
-            strToonInformation='This should never happen %d' % toonInformation['nextProgram']
+            strToonInformation='This should never happen %s' % toonInformation['nextProgram']
             if int(toonInformation['nextProgram'])==0:
                 strToonInformation="Progam is off"
 
@@ -298,8 +298,8 @@ class BasePlugin:
             self.toonConnSetControl.Connect()
 
         if (Unit == 3):
-            Domoticz.Debug("Toon ProgramState")
-            Domoticz.Debug(str(Level)+" -> " + rProgramStates[int(Level//10)])
+            Domoticz.Log("Toon ProgramState")
+            Domoticz.Log(str(Level)+" -> " + rProgramStates[int((Level//10)-1)])
             self.programState=str(Level)
             Devices[3].Update(nValue = 0, sValue = str(Level))
             self.toonSetControlUrl="/happ_thermstat?action=changeSchemeState&state="+rProgramStates[int((Level//10)-1)]
@@ -307,7 +307,7 @@ class BasePlugin:
 
         if (Unit == 4):
             Domoticz.Debug("Toon Program")
-            Domoticz.Debug(str(Level)+" -> "+rPrograms[int(Level//10)])
+            Domoticz.Debug(str(Level)+" -> "+rPrograms[int((Level//10)-1)])
             self.program=str(Level)
             Devices[4].Update(nValue = 0, sValue = str(Level))
             self.toonSetControlUrl="/happ_thermstat?action=changeSchemeState&state=2&temperatureState="+rPrograms[int((Level//10)-1)]
