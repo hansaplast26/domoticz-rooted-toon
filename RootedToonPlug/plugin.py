@@ -23,6 +23,7 @@
 #temporary 2 -> '30'
 programStates = ['10','20','30']
 rProgramStates = ['1','2','3']
+strProgramStates = ['No', 'Yes', 'Manual']
 
 #ComfortLevelValue: 0 ->'40'
 #HomeLevelValue: 1 -> '30'
@@ -32,9 +33,12 @@ rProgramStates = ['1','2','3']
 #programs = ['40','30','20','10','60']
 programs = ['40','30','20','10','50']
 rPrograms = ['3','2','1','0','4']
+strPrograms = ['Comfort', 'Home', 'Sleep', 'Away','Manual']
 
 import Domoticz
 import json
+from datetime import datetime
+from datetime import timezone
 
 class BasePlugin:
     toonConnThermostatInfo = None
@@ -42,6 +46,12 @@ class BasePlugin:
     toonConnSetControl=None
     toonConnZwaveInfo=None
     toonSetControlUrl=""
+
+    strCurrentSetpoint = ''
+    strCurrentTemp = ''
+    programState = -1
+    program = -1
+    strToonInformation=''
 
     enabled = False
     def __init__(self):
@@ -62,6 +72,7 @@ class BasePlugin:
             Domoticz.Device(Name="Program", Unit=4, Image=15, TypeName="Selector Switch", Options=programOptions).Create()
 
             Domoticz.Device(Name="Boiler pressure", Unit=5, TypeName="Pressure").Create()
+            Domoticz.Device(Name="Program info", Unit=6, TypeName="Text").Create()
 
             #Gas
 
@@ -90,8 +101,8 @@ class BasePlugin:
         self.toonConnBoilerInfo = Domoticz.Connection(Name="Toon Connection", Transport="TCP/IP", Protocol="HTTP", Address=Parameters["Address"], Port=Parameters["Port"])
         self.toonConnBoilerInfo.Connect()
 
-        self.toonConnZwaveInfo = Domoticz.Connection(Name="Toon Connection", Transport="TCP/IP", Protocol="HTTP", Address=Parameters["Address"], Port=Parameters["Port"])
-        self.toonConnZwaveInfo.Connect()
+        #self.toonConnZwaveInfo = Domoticz.Connection(Name="Toon Connection", Transport="TCP/IP", Protocol="HTTP", Address=Parameters["Address"], Port=Parameters["Port"])
+        #self.toonConnZwaveInfo.Connect()
 
         self.toonConnSetControl= Domoticz.Connection(Name="Toon Connection", Transport="TCP/IP", Protocol="HTTP", Address=Parameters["Address"], Port=Parameters["Port"])
 
@@ -149,28 +160,67 @@ class BasePlugin:
         if result!='ok':
             return
 
+        toonInformation={}
+
         if 'currentTemp' in Response:
             currentTemp=float(Response['currentTemp'])/100
             strCurrentTemp="%.1f" % currentTemp
-            Domoticz.Debug("Current Temperature = "+strCurrentTemp)
-            Devices[1].Update(nValue=0, sValue=strCurrentTemp)
+            if (strCurrentTemp!=self.strCurrentTemp):
+                self.strCurrentTemp=strCurrentTemp
+                Domoticz.Log("Updating current Temperature = "+strCurrentTemp)
+                Devices[1].Update(nValue=0, sValue=strCurrentTemp)
 
         if 'currentSetpoint' in Response:
             currentSetpoint=float(Response['currentSetpoint'])/100
             strCurrentSetpoint="%.1f" % currentSetpoint
-            Domoticz.Debug("Current Setpoint = "+strCurrentSetpoint)
-            Devices[2].Update(nValue=0, sValue=strCurrentSetpoint)
+            if (strCurrentSetpoint!=self.strCurrentSetpoint):
+                self.strCurrentSetpoint=strCurrentSetpoint
+                Domoticz.Log("Updating current Setpoint = "+strCurrentSetpoint)
+                Devices[2].Update(nValue=0, sValue=strCurrentSetpoint)
 
         if 'programState' in Response:
             programState=int(Response['programState'])
-            Domoticz.Debug("programState  = " + str(programState)+"->"+ programStates[programState])
-            Devices[3].Update(nValue=0, sValue=programStates[programState])
+            if (programState!=self.programState):
+                self.programState=programState
+                Domoticz.Log("Updating programState  = " + str(programState)+"->"+ programStates[programState])
+                Devices[3].Update(nValue=0, sValue=programStates[programState])
 
         if 'activeState' in Response:
             program=int(Response['activeState'])
-            Domoticz.Debug("program = " +str(program)+"->" + programs[program])
-            Devices[4].Update(nValue=0, sValue=programs[program])
+            if (program!=self.program):
+                self.program=program
+                Domoticz.Log("Updating program = " +str(program)+"->" + programs[program])
+                Devices[4].Update(nValue=0, sValue=programs[program])
 
+        if 'nextTime' in Response:
+            toonInformation['nextTime']=Response['nextTime']
+
+        if 'nextState' in Response:
+            toonInformation['nextState']=Response['nextState']
+
+        if 'nextProgram' in Response:
+            toonInformation['nextProgram']=Response['nextProgram']
+
+        if 'nextSetpoint'in Response:
+            toonInformation['nextSetpoint']=Response['nextSetpoint']
+
+
+        if (len(toonInformation)==4):
+            if int(toonInformation['nextProgram'])==0:
+                strToonInformation="Progam is off"
+
+            elif int(toonInformation['nextProgram'])>0:
+                dt=datetime.fromtimestamp(int(toonInformation['nextTime']))
+                strNextTime=dt.strftime("%Y-%d-%m %H:%M:%S")
+                strNextProgram=strPrograms[int(toonInformation['nextState'])]
+                strNextSetpoint="%.1f" % (float(toonInformation['nextSetpoint'])/100)
+
+                strToonInformation="Next program %s (%s C) at %s" % (strNextProgram, strNextSetpoint, strNextTime)
+                if (strToonInformation!=self.strToonInformation):
+                    Domoticz.Log("Updating Toon information")
+                    self.strToonInformation=strToonInformation
+
+            Devices[6].Update(nValue=0, sValue=strToonInformation)
 
         return
 
@@ -196,7 +246,15 @@ class BasePlugin:
             strData = Data["Data"].decode("utf-8", "ignore")
         except:
             Domoticz.Log("Something fishy")
-            Domoticz.Log(Data["Data"])
+            if (Connection==self.toonConnThermostatInfo):
+                Domoticz.Log("ThermostatInfo")
+                return
+            if (Connection==self.toonConnBoilerInfo):
+                Domoticz.Log("BoilerInfo")
+                return
+
+            else:
+                Domoticz.Log("Unknown connection")
             return
 
         Domoticz.Debug(strData)
@@ -233,21 +291,24 @@ class BasePlugin:
         if (Unit == 2):
             strLevel=str(int(Level*100))
             Domoticz.Debug("Toon New setpoint: %s" % str(Level))
+            self.strCurrentSetpoint=str(Level)
             Devices[Unit].Update(nValue=0, sValue=str(Level))
             self.toonSetControlUrl="/happ_thermstat?action=setSetpoint&Setpoint=" + strLevel
             self.toonConnSetControl.Connect()
 
         if (Unit == 3):
             Domoticz.Debug("Toon ProgramState")
-            Devices[3].Update(nValue = 0, sValue = str(Level))
             Domoticz.Debug(str(Level)+" -> " + rProgramStates[int(Level//10)])
+            self.programState=str(Level)
+            Devices[3].Update(nValue = 0, sValue = str(Level))
             self.toonSetControlUrl="/happ_thermstat?action=changeSchemeState&state="+rProgramStates[int((Level//10)-1)]
             self.toonConnSetControl.Connect()
 
         if (Unit == 4):
             Domoticz.Debug("Toon Program")
-            Devices[4].Update(nValue = 0, sValue = str(Level))
             Domoticz.Debug(str(Level)+" -> "+rPrograms[int(Level//10)])
+            self.program=str(Level)
+            Devices[4].Update(nValue = 0, sValue = str(Level))
             self.toonSetControlUrl="/happ_thermstat?action=changeSchemeState&state=2&temperatureState="+rPrograms[int((Level//10)-1)]
             Domoticz.Debug(self.toonSetControlUrl)
             self.toonConnSetControl.Connect()
