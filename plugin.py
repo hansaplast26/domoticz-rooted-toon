@@ -206,6 +206,7 @@ class BasePlugin:
 
 
         if (len(toonInformation)==4):
+            strToonInformation='This should never happen %d' % toonInformation['nextProgram']
             if int(toonInformation['nextProgram'])==0:
                 strToonInformation="Progam is off"
 
