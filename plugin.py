@@ -22,7 +22,7 @@
 #yes = 1 -> '20'
 #temporary 2 -> '30'
 programStates = ['10','20','30']
-rProgramStates = ['1','2','3']
+rProgramStates = ['0','1','2']
 strProgramStates = ['No', 'Yes', 'Manual']
 
 #ComfortLevelValue: 0 ->'40'
