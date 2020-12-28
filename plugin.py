@@ -3,7 +3,7 @@
 # Author: GizMoCuz
 #
 """
-<plugin key="RootedToonPlug" name="Rooted Toon" author="Snah Muabhcie" version="1.0.0" externallink="https://toon.nl">
+<plugin key="RootedToonPlug" name="Rooted Toon" author="Snah Muabhcie" version="1.0.1" externallink="https://toon.nl">
     <description>
         <h2>Rooted Toon</h2><br/>
         <ul style="list-style-type:square">
@@ -47,11 +47,17 @@ class BasePlugin:
     toonConnZwaveInfo=None
     toonSetControlUrl=""
 
+    #Related to getThermostatInfo
     strCurrentSetpoint = ''
     strCurrentTemp = ''
     programState = -1
     program = -1
-    strToonInformation=''
+    strToonInformation='Waiting for first communication with Toon'
+
+    #related to getPwrUsage
+    powerUsage = 0
+    powerProduction = 0
+    gasUsage = 0
 
     enabled = False
     def __init__(self):
@@ -73,6 +79,10 @@ class BasePlugin:
 
             Domoticz.Device(Name="Boiler pressure", Unit=5, TypeName="Pressure").Create()
             Domoticz.Device(Name="Program info", Unit=6, TypeName="Text").Create()
+
+            Domoticz.Device(Name="Power Usage", Unit=7, Type=248, Subtype=1).Create()
+            Domoticz.Device(Name="Power Production", Unit=8, Type=248, Subtype=1).Create()
+            Domoticz.Device(Name="Gas Usage", Unit=9, TypeName="Waterflow").Create()
 
             #Gas
 
@@ -100,6 +110,9 @@ class BasePlugin:
 
         self.toonConnBoilerInfo = Domoticz.Connection(Name="Toon Connection", Transport="TCP/IP", Protocol="HTTP", Address=Parameters["Address"], Port=Parameters["Port"])
         self.toonConnBoilerInfo.Connect()
+
+        self.toonConnPowerUsage = Domoticz.Connection(Name="Toon Connection", Transport="TCP/IP", Protocol="HTTP", Address=Parameters["Address"], Port=Parameters["Port"])
+        self.toonConnPowerUsage.Connect()
 
         #self.toonConnZwaveInfo = Domoticz.Connection(Name="Toon Connection", Transport="TCP/IP", Protocol="HTTP", Address=Parameters["Address"], Port=Parameters["Port"])
         #self.toonConnZwaveInfo.Connect()
@@ -133,6 +146,9 @@ class BasePlugin:
             if (Connection == self.toonConnBoilerInfo):
                 Domoticz.Debug("getBoilerInfo created")
                 requestUrl="/boilerstatus/boilervalues.txt"
+            if (Connection == self.toonConnPowerUsage):
+                Domoticz.Log("getPowerUsage")
+                requestUrl="/happ_pwrusage?action=GetCurrentUsage"
             #if (Connection == self.toonConnZwaveInfo):
             #    Domoticz.Log("getZwaveInfo created")
             #    requestUrl="/hdrv_zwave?action=getDevices.json"
@@ -161,6 +177,23 @@ class BasePlugin:
             return
 
         toonInformation={}
+
+        #From toon API info
+        #"currentSetpoint": 1050, // Current target temperature for the thermostat
+        #"currentDisplayTemp": 2150, // Temperature that is currently on the display
+        #"programState": 0, // State of the weekly thermostat schedule (see below)
+        #"activeState": -1, // Which programmed setting is active (see below)
+        #"nextProgram": -1, // Program type that will be active after the current entry ends.
+        #"nextState": -1, // Which programmed setting will be used after the current one ends
+        #"nextTime": 0, // Time next programmed setting starts
+        #"nextSetpoint": 0, // Which target temperature will be used by the next activeState
+        #"errorFound": 255, // 255 means everything ok. Anything else means there is trouble
+        #"boilerModuleConnected": 1, // Boilermodule connected or not
+        #"realSetpoint": 1050, // The setpoint that is really active based on the program or manual setting
+        #"burnerInfo": "0", // Burner state (see below)
+        #"otCommError": "0", // info if there is an issue between the boilerModule and the boiler. Will only work for OpenTherm boilers
+        #"currentModulationLevel": 0, // Value between 0% and 100% indicating the level that the boiler is heating at. Will only work for OpenTherm boilers
+        #"haveOTBoiler": 0 // Value that indicated if a OT boiler is connected.
 
         if 'currentTemp' in Response:
             currentTemp=float(Response['currentTemp'])/100
@@ -206,7 +239,9 @@ class BasePlugin:
 
 
         if (len(toonInformation)==4):
-            strToonInformation='This should never happen %s' % toonInformation['nextProgram']
+            strToonInformation='No information received from Toon yet (%s)' % toonInformation['nextProgram']
+            if int(toonInformation['nextProgram']==-1):
+                strToonInformation="No program information available"
             if int(toonInformation['nextProgram'])==0:
                 strToonInformation="Progam is off"
 
@@ -215,13 +250,12 @@ class BasePlugin:
                 strNextTime=dt.strftime("%Y-%d-%m %H:%M:%S")
                 strNextProgram=strPrograms[int(toonInformation['nextState'])]
                 strNextSetpoint="%.1f" % (float(toonInformation['nextSetpoint'])/100)
-
                 strToonInformation="Next program %s (%s C) at %s" % (strNextProgram, strNextSetpoint, strNextTime)
-                if (strToonInformation!=self.strToonInformation):
-                    Domoticz.Log("Updating Toon information")
-                    self.strToonInformation=strToonInformation
 
-            Devices[6].Update(nValue=0, sValue=strToonInformation)
+            if (strToonInformation!=self.strToonInformation):
+                Domoticz.Log("Updating Toon information")
+                self.strToonInformation=strToonInformation
+                Devices[6].Update(nValue=0, sValue=strToonInformation)
 
         return
 
@@ -231,6 +265,54 @@ class BasePlugin:
             Domoticz.Debug("boilerpressure: "+("%.1f" % Response['boilerPressure']))
             strBoilerPressure="%.1f" % Response['boilerPressure']
             Devices[5].Update(nValue=0, sValue=strBoilerPressure)
+
+        return
+
+    def onMessagePowerUsage(self, Connection, Response):
+        Domoticz.Log("onMessagePowerUsage called")
+        result='error'
+        if 'result' in Response:
+            result=Response['result']
+
+        Domoticz.Log("Toon getPowerUsage command executed with status: " + result)
+        if result!='ok':
+            return
+
+        if 'powerUsage' in Response:
+            data=Response['powerUsage']
+            if 'value' in data:
+                value=data['value']
+                if value==None:
+                    value=float(0)
+                Domoticz.Log('Powerusage: %s' % value)
+                if (value!=self.powerUsage):
+                    self.powerUsage=value
+                    Devices[7].Update(nValue=0, sValue=str(value))
+
+
+
+        if 'powerProduction' in Response:
+            data=Response['powerProduction']
+            if 'value' in data:
+                value=data['value']
+                if value==None:
+                    value=float(0)
+                Domoticz.Log('Powerproduction %s' % value)
+                if (value!=self.powerProduction):
+                    self.powerProduction=value
+                    Devices[8].Update(nValue=0, sValue=str(value))
+
+        if 'gasUsage' in Response:
+            data=Response['gasUsage']
+            if 'value' in data:
+                value=data['value']
+                if value==None:
+                    value=float(0)
+                Domoticz.Log('Gasusage: %s' % value)
+                if (value!=self.gasUsage):
+                    self.gasUsage=value
+                    Devices[9].Update(nValue=0, sValue="-1;"+str(value))
+
 
         return
 
@@ -261,6 +343,7 @@ class BasePlugin:
         Domoticz.Debug(strData)
         if (strData[0]!='{'):
             Domoticz.Log("onMessage aborted, response format not JSON")
+            Domoticz.Log(strData)
             return
         Response = json.loads(strData)
 
@@ -278,6 +361,9 @@ class BasePlugin:
 
         if (Connection==self.toonConnBoilerInfo):
             self.onMessageBoilerInfo(Connection, Response)
+
+        if (Connection==self.toonConnPowerUsage):
+            self.onMessagePowerUsage(Connection, Response)
 
         ##if (Connection==self.toonConnZwaveInfo):
         #    Domoticz.Log("onMessage: toonConnZwaveInfo")
@@ -331,6 +417,9 @@ class BasePlugin:
 
         if (self.toonConnBoilerInfo.Connected()==False):
             self.toonConnBoilerInfo.Connect()
+
+        if (self.toonConnPowerUsage.Connected()==False):
+            self.toonConnPowerUsage.Connect()
 
         #if (self.toonConnZwaveInfo.Connected()==False):
         #    self.toonConnZwaveInfo.Connect()
