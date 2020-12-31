@@ -3,7 +3,7 @@
 # Author: GizMoCuz
 #
 """
-<plugin key="RootedToonPlug" name="Rooted Toon" author="Hansaplast31" version="1.0.2" externallink="https://www.domoticz.com/forum/viewtopic.php?f=34&t=34986">
+<plugin key="RootedToonPlug" name="Rooted Toon" author="Hansaplast31" version="1.0.3" externallink="https://www.domoticz.com/forum/viewtopic.php?f=34&t=34986">
     <description>
         <h2>Rooted Toon</h2><br/>
         <ul style="list-style-type:square">
@@ -64,21 +64,7 @@ class BasePlugin:
     toonConnZwaveInfo=None
     toonSetControlUrl=""
 
-    #Related to getThermostatInfo
-    #strCurrentSetpoint = ''
-    #strCurrentTemp = ''
-    #programState = -1
-    #program = -1
     strToonInformation='Waiting for first communication with Toon'
-
-    #related to ZwaveDevices
-    #zwaveDeliveredFlow='0'
-    #zwaveDeliveredQ = '0'
-    #zwaveReceivedFlow = '0'
-    #zwaveReceivedQ = '0'
-    #zwaveGasUsage = '0'
-    #zwaveGasCounter = '0'
-
 
     enabled = False
     def __init__(self):
@@ -103,14 +89,14 @@ class BasePlugin:
         if 6 not in Devices:
             Domoticz.Device(Name="Program info", Unit=6, TypeName="Text").Create()
         if 7 not in Devices:
-            #Domoticz.Device(Name="Gas", Unit=7, TypeName="Gas").Create()
-            Domoticz.Device(Name="Gas", Unit=7, Type=243, Subtype=33, Switchtype=1).Create()
+            Domoticz.Device(Name="Gas", Unit=7, TypeName="Gas").Create()
+            #Domoticz.Device(Name="Gas", Unit=7, Type=243, Subtype=33, Switchtype=1).Create()
         if 8 not in Devices:
             #Domoticz.Device(Name="Electricity", Unit=8, TypeName="Usage").Create()
             Domoticz.Device(Name="Electricity", Unit=8, TypeName="kWh").Create()
         if 9 not in Devices:
-            #Domoticz.Device(Name="Generated Electricity", Unit=9, TypeName="Usage").Create()
-            Domoticz.Device(Name="Generated Electricity", Unit=9, Type=243, Subtype=33, Switchtype=4).Create()
+            Domoticz.Device(Name="Generated Electricity", Unit=9, TypeName="Usage").Create()
+            #Domoticz.Device(Name="Generated Electricity", Unit=9, Type=243, Subtype=33, Switchtype=4).Create()
 
         self.toonConnThermostatInfo = Domoticz.Connection(Name="Toon Connection", Transport="TCP/IP", Protocol="HTTP", Address=Parameters["Address"], Port=Parameters["Port"])
         self.toonConnThermostatInfo.Connect()
@@ -151,7 +137,7 @@ class BasePlugin:
                 Domoticz.Debug("getBoilerInfo created")
                 requestUrl="/boilerstatus/boilervalues.txt"
             if (Connection == self.toonConnZwaveInfo):
-                Domoticz.Log("getZwaveInfo created")
+                Domoticz.Debug("getZwaveInfo created")
                 requestUrl="/hdrv_zwave?action=getDevices.json"
             if (Connection == self.toonConnSetControl):
                 Domoticz.Debug("getConnSetControl created")
@@ -281,7 +267,9 @@ class BasePlugin:
                     Domoticz.Debug("Zwave Gas usage: "+ zwaveDevInfo['CurrentGasFlow'])
                     Domoticz.Debug("Zwave Gas counter: "+ zwaveDevInfo['CurrentGasQuantity'])
                     #tbd: the order "counter;current" according to documentation. seems inconsistent
-                    UpdateDevice(Unit=7, nValue=0, sValue="%.0f;%.0f" % (float(zwaveDevInfo['CurrentGasQuantity']), float(zwaveDevInfo['CurrentGasFlow']) ))
+                    #for managed counter:
+                    #UpdateDevice(Unit=7, nValue=0, sValue="%.0f;%.0f" % (float(zwaveDevInfo['CurrentGasQuantity']), float(zwaveDevInfo['CurrentGasFlow']) ))
+                    UpdateDevice(Unit=7, nValue=0, sValue="%.0f" % (float(zwaveDevInfo['CurrentGasQuantity']) ))
 
                 if zwaveDevInfo['type']=='elec_delivered_nt':
                     zwaveDeliveredNtFlow=zwaveDevInfo['CurrentElectricityFlow']
@@ -314,7 +302,9 @@ class BasePlugin:
         zwaveReceivedQ=str(int(float(zwaveReceivedNtQ))+int(float(zwaveReceivedLtQ)))
         Domoticz.Debug("zwaveReceived: " + zwaveReceivedFlow+";"+zwaveReceivedQ)
         #tbd: the order "counter;current" according to documentation. seems inconsistent
-        UpdateDevice(Unit=9, nValue=0, sValue=zwaveReceivedQ+";"+zwaveReceivedFlow)
+        #for managed counter
+        #UpdateDevice(Unit=9, nValue=0, sValue=zwaveReceivedQ+";"+zwaveReceivedFlow)
+        UpdateDevice(Unit=9, nValue=0, sValue=zwaveReceivedFlow+";"+zwaveReceivedQ)
 
         return
 
@@ -325,16 +315,20 @@ class BasePlugin:
         try:
             strData = Data["Data"].decode("utf-8", "ignore")
         except:
-            Domoticz.Log("Something fishy")
             if (Connection==self.toonConnThermostatInfo):
-                Domoticz.Log("ThermostatInfo")
+                Domoticz.Log("Something unexpected while onMessage: ThermostatInfo")
                 return
             if (Connection==self.toonConnBoilerInfo):
-                Domoticz.Log("BoilerInfo")
+                Domoticz.Log("Something unexpected while onMessage: BoilerInfo")
+                return
+            if (Connection==self.toonConnZwaveInfo):
+                Domoticz.Log("Something unexpected while onMessage: toonConnZwaveInfo")
+                return
+            if (Connection==self.toonConnSetControl):
+                Domoticz.Log("Something unexpected while onMessage: toonConnSetControl")
                 return
 
-            else:
-                Domoticz.Log("Unknown connection")
+            Domoticz.Log("Unknown connection")
             return
 
         Domoticz.Debug(strData)
@@ -471,5 +465,5 @@ def UpdateDevice(Unit, nValue, sValue, TimedOut=0, AlwaysUpdate=False):
     if (Unit in Devices):
         if (Devices[Unit].nValue != nValue) or (Devices[Unit].sValue != sValue) or (Devices[Unit].TimedOut != TimedOut):
             Devices[Unit].Update(nValue=nValue, sValue=str(sValue), TimedOut=TimedOut)
-            Domoticz.Log("Update "+str(nValue)+":'"+str(sValue)+"' ("+Devices[Unit].Name+")")
+            Domoticz.Debug("Update "+str(nValue)+":'"+str(sValue)+"' ("+Devices[Unit].Name+")")
     return
