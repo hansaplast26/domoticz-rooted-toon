@@ -3,7 +3,7 @@
 # Author: GizMoCuz
 #
 """
-<plugin key="RootedToonPlug" name="Rooted Toon" author="Hansaplast31" version="1.0.3" externallink="https://www.domoticz.com/forum/viewtopic.php?f=34&t=34986">
+<plugin key="RootedToonPlug" name="Rooted Toon" author="Hansaplast31" version="1.0.4" externallink="https://www.domoticz.com/forum/viewtopic.php?f=34&t=34986">
     <description>
         <h2>Rooted Toon</h2><br/>
         <ul style="list-style-type:square">
