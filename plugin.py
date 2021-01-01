@@ -55,7 +55,6 @@ strPrograms = ['Comfort', 'Home', 'Sleep', 'Away','Manual']
 import Domoticz
 import json
 from datetime import datetime
-from datetime import timezone
 
 class BasePlugin:
     toonConnThermostatInfo = None
@@ -97,6 +96,8 @@ class BasePlugin:
         if 9 not in Devices:
             Domoticz.Device(Name="Generated Electricity", Unit=9, TypeName="Usage").Create()
             #Domoticz.Device(Name="Generated Electricity", Unit=9, Type=243, Subtype=33, Switchtype=4).Create()
+        if 10 not in Devices:
+            Domoticz.Device(Name="P1 Electricity", Unit=10, Type=250, Subtype=1).Create()
 
         self.toonConnThermostatInfo = Domoticz.Connection(Name="Toon Connection", Transport="TCP/IP", Protocol="HTTP", Address=Parameters["Address"], Port=Parameters["Port"])
         self.toonConnThermostatInfo.Connect()
@@ -305,6 +306,9 @@ class BasePlugin:
         #for managed counter
         #UpdateDevice(Unit=9, nValue=0, sValue=zwaveReceivedQ+";"+zwaveReceivedFlow)
         UpdateDevice(Unit=9, nValue=0, sValue=zwaveReceivedFlow+";"+zwaveReceivedQ)
+        now=datetime.now()
+        strDate=now.strftime("%Y-%m-%d %H:%M:%S")
+        UpdateDevice(Unit=10, nValue=0, sValue=str(int(float(zwaveDeliveredNtQ)))+";"+str(int(float(zwaveDeliveredLtQ)))+";"+str(int(float(zwaveReceivedNtQ)))+";"+str(int(float(zwaveReceivedLtQ)))+";"+zwaveDeliveredFlow+";"+zwaveReceivedFlow)
 
         return
 
