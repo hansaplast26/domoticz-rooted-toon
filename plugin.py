@@ -264,7 +264,7 @@ class BasePlugin:
 
 
             if 'type' in zwaveDevInfo:
-                if zwaveDevInfo['type']=='gas':
+                if (zwaveDevInfo['type']=='gas' or zwaveDevInfo['internalAddress']=='2.1'):
                     Domoticz.Debug("Zwave Gas usage: "+ zwaveDevInfo['CurrentGasFlow'])
                     Domoticz.Debug("Zwave Gas counter: "+ zwaveDevInfo['CurrentGasQuantity'])
                     #tbd: the order "counter;current" according to documentation. seems inconsistent
@@ -272,23 +272,23 @@ class BasePlugin:
                     #UpdateDevice(Unit=7, nValue=0, sValue="%.0f;%.0f" % (float(zwaveDevInfo['CurrentGasQuantity']), float(zwaveDevInfo['CurrentGasFlow']) ))
                     UpdateDevice(Unit=7, nValue=0, sValue="%.0f" % (float(zwaveDevInfo['CurrentGasQuantity']) ))
 
-                if zwaveDevInfo['type']=='elec_delivered_nt':
+                if (zwaveDevInfo['type']=='elec_delivered_nt' or zwaveDevInfo['internalAddress']=='2.3'):
                     zwaveDeliveredNtFlow=zwaveDevInfo['CurrentElectricityFlow']
                     zwaveDeliveredNtQ=zwaveDevInfo['CurrentElectricityQuantity']
                     Domoticz.Debug('elec_delivered_nt: %s, %s' % (zwaveDeliveredNtFlow,zwaveDeliveredNtQ) )
 
-                if zwaveDevInfo['type']=='elec_delivered_lt':
+                if (zwaveDevInfo['type']=='elec_delivered_lt' or zwaveDevInfo['internalAddress']=='2.5'):
                     zwaveDeliveredLtFlow=zwaveDevInfo['CurrentElectricityFlow']
                     zwaveDeliveredLtQ=zwaveDevInfo['CurrentElectricityQuantity']
                     Domoticz.Debug('elec_delivered_lt: %s, %s' % (zwaveDeliveredLtFlow,zwaveDeliveredLtQ) )
 
 
-                if zwaveDevInfo['type']=='elec_received_nt':
+                if (zwaveDevInfo['type']=='elec_received_nt' or zwaveDevInfo['internalAddress']=='2.4'):
                     zwaveReceivedNtFlow=zwaveDevInfo['CurrentElectricityFlow']
                     zwaveReceiveddNtQ=zwaveDevInfo['CurrentElectricityQuantity']
                     Domoticz.Debug('elec_received_nt: %s, %s' % (zwaveReceivedNtFlow,zwaveReceivedNtQ) )
 
-                if zwaveDevInfo['type']=='elec_received_lt':
+                if (zwaveDevInfo['type']=='elec_received_lt' or zwaveDevInfo['internalAddress']=='2.6'):
                     zwaveReceivedLtFlow=zwaveDevInfo['CurrentElectricityFlow']
                     zwaveReceivedLtQ=zwaveDevInfo['CurrentElectricityQuantity']
                     Domoticz.Debug('elec_received_lt: %s, %s' % (zwaveReceivedLtFlow,zwaveReceivedLtQ) )
