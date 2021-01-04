@@ -3,17 +3,24 @@
 # Author: GizMoCuz
 #
 """
-<plugin key="RootedToonPlug" name="Rooted Toon" author="Hansaplast31" version="1.0.4" externallink="https://www.domoticz.com/forum/viewtopic.php?f=34&t=34986">
+<plugin key="RootedToonPlug" name="Rooted Toon" author="Hansaplast31" version="1.0.5" externallink="https://www.domoticz.com/forum/viewtopic.php?f=34&t=34986">
     <description>
         <h2>Rooted Toon</h2><br/>
         <ul style="list-style-type:square">
             <li>Interfacing between Domoticz and a rooted Toon</li>
             <li>The rooted toon is directly queried via http json commands</li>
+            <li>Toon v1 Zwave values: 2.1, 2.3, 2.5, 2.4 & 2.6</li>
+            <li>Toon v2 Zwave values (unconfirmed): 2.1, 2.4, 2.6, 2.5, 2.7</li>
         </ul>
     </description>
     <params>
         <param field="Address" label="IP Address" width="200px" required="true" default="127.0.0.1" />
         <param field="Port" label="Port" width="30px" required="true" default="80" />
+        <param field="Mode1" label="Zwave Gas internalAddress" width="30px" required="true" default="2.1" />
+        <param field="Mode2" label="Zwave Elec delivered nt internalAddress" width="30px" required="true" default="2.3" />
+        <param field="Mode3" label="Zwave Elec delivered lt internalAddress" width="30px" required="true" default="2.5" />
+        <param field="Mode4" label="Zwave Elec received nt internalAddress" width="30px" required="true" default="2.4" />
+        <param field="Mode5" label="Zwave Elec received lt internalAddress" width="30px" required="true" default="2.6" />
     </params>
 </plugin>
 """
@@ -63,6 +70,12 @@ class BasePlugin:
     toonConnZwaveInfo=None
     toonSetControlUrl=""
 
+    ia_gas=''
+    ia_ednt=''
+    ia_edlt=''
+    ia_ernt=''
+    ia_erlt=''
+
     strToonInformation='Waiting for first communication with Toon'
 
     enabled = False
@@ -110,6 +123,12 @@ class BasePlugin:
 
         self.toonConnSetControl= Domoticz.Connection(Name="Toon Connection", Transport="TCP/IP", Protocol="HTTP", Address=Parameters["Address"], Port=Parameters["Port"])
 
+        Domoticz.Log(json.dumps(Parameters))
+        self.ia_gas=Parameters["Mode1"]
+        self.ia_ednt=Parameters["Mode2"]
+        self.ia_edlt=Parameters["Mode3"]
+        self.ia_ernt=Parameters["Mode4"]
+        self.ia_erlt=Parameters["Mode5"]
 
         Domoticz.Heartbeat(5)
         return True
@@ -264,50 +283,47 @@ class BasePlugin:
 
 
             if 'type' in zwaveDevInfo:
-                if (zwaveDevInfo['type']=='gas' or zwaveDevInfo['internalAddress']=='2.1'):
+                if (zwaveDevInfo['internalAddress']==self.ia_gas):
                     Domoticz.Debug("Zwave Gas usage: "+ zwaveDevInfo['CurrentGasFlow'])
                     Domoticz.Debug("Zwave Gas counter: "+ zwaveDevInfo['CurrentGasQuantity'])
-                    #tbd: the order "counter;current" according to documentation. seems inconsistent
-                    #for managed counter:
-                    #UpdateDevice(Unit=7, nValue=0, sValue="%.0f;%.0f" % (float(zwaveDevInfo['CurrentGasQuantity']), float(zwaveDevInfo['CurrentGasFlow']) ))
                     UpdateDevice(Unit=7, nValue=0, sValue="%.0f" % (float(zwaveDevInfo['CurrentGasQuantity']) ))
 
-                if (zwaveDevInfo['type']=='elec_delivered_nt' or zwaveDevInfo['internalAddress']=='2.3'):
+                if (zwaveDevInfo['internalAddress']==self.ia_ednt):
                     zwaveDeliveredNtFlow=zwaveDevInfo['CurrentElectricityFlow']
                     zwaveDeliveredNtQ=zwaveDevInfo['CurrentElectricityQuantity']
                     Domoticz.Debug('elec_delivered_nt: %s, %s' % (zwaveDeliveredNtFlow,zwaveDeliveredNtQ) )
 
-                if (zwaveDevInfo['type']=='elec_delivered_lt' or zwaveDevInfo['internalAddress']=='2.5'):
+                if (zwaveDevInfo['internalAddress']==self.ia_edlt):
                     zwaveDeliveredLtFlow=zwaveDevInfo['CurrentElectricityFlow']
                     zwaveDeliveredLtQ=zwaveDevInfo['CurrentElectricityQuantity']
                     Domoticz.Debug('elec_delivered_lt: %s, %s' % (zwaveDeliveredLtFlow,zwaveDeliveredLtQ) )
 
-
-                if (zwaveDevInfo['type']=='elec_received_nt' or zwaveDevInfo['internalAddress']=='2.4'):
+                if (zwaveDevInfo['internalAddress']==self.ia_ernt):
                     zwaveReceivedNtFlow=zwaveDevInfo['CurrentElectricityFlow']
                     zwaveReceiveddNtQ=zwaveDevInfo['CurrentElectricityQuantity']
                     Domoticz.Debug('elec_received_nt: %s, %s' % (zwaveReceivedNtFlow,zwaveReceivedNtQ) )
 
-                if (zwaveDevInfo['type']=='elec_received_lt' or zwaveDevInfo['internalAddress']=='2.6'):
+                if (zwaveDevInfo['internalAddress']==self.ia_erlt):
                     zwaveReceivedLtFlow=zwaveDevInfo['CurrentElectricityFlow']
                     zwaveReceivedLtQ=zwaveDevInfo['CurrentElectricityQuantity']
                     Domoticz.Debug('elec_received_lt: %s, %s' % (zwaveReceivedLtFlow,zwaveReceivedLtQ) )
 
 
-        zwaveDeliveredFlow=str(int(float(zwaveDeliveredNtFlow))+int(float(zwaveDeliveredLtFlow)))
-        zwaveDeliveredQ=str(int(float(zwaveDeliveredNtQ))+int(float(zwaveDeliveredLtQ)))
+        try:
+            zwaveDeliveredFlow=str(int(float(zwaveDeliveredNtFlow))+int(float(zwaveDeliveredLtFlow)))
+            zwaveDeliveredQ=str(int(float(zwaveDeliveredNtQ))+int(float(zwaveDeliveredLtQ)))
+        except:
+            Domoticz.Log("One or more Zwave internal address not configured correctly?")
+            return
+
         Domoticz.Debug("zwaveDelivered: " + zwaveDeliveredFlow+";"+zwaveDeliveredQ)
         UpdateDevice(Unit=8, nValue=0, sValue=zwaveDeliveredFlow+";"+zwaveDeliveredQ)
 
         zwaveReceivedFlow=str(int(float(zwaveReceivedNtFlow))+int(float(zwaveReceivedLtFlow)))
         zwaveReceivedQ=str(int(float(zwaveReceivedNtQ))+int(float(zwaveReceivedLtQ)))
         Domoticz.Debug("zwaveReceived: " + zwaveReceivedFlow+";"+zwaveReceivedQ)
-        #tbd: the order "counter;current" according to documentation. seems inconsistent
-        #for managed counter
-        #UpdateDevice(Unit=9, nValue=0, sValue=zwaveReceivedQ+";"+zwaveReceivedFlow)
+
         UpdateDevice(Unit=9, nValue=0, sValue=zwaveReceivedFlow+";"+zwaveReceivedQ)
-        now=datetime.now()
-        strDate=now.strftime("%Y-%m-%d %H:%M:%S")
         UpdateDevice(Unit=10, nValue=0, sValue=str(int(float(zwaveDeliveredNtQ)))+";"+str(int(float(zwaveDeliveredLtQ)))+";"+str(int(float(zwaveReceivedNtQ)))+";"+str(int(float(zwaveReceivedLtQ)))+";"+zwaveDeliveredFlow+";"+zwaveReceivedFlow)
 
         return
