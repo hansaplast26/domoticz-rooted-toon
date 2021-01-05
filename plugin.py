@@ -3,7 +3,7 @@
 # Author: GizMoCuz
 #
 """
-<plugin key="RootedToonPlug" name="Rooted Toon" author="Hansaplast31" version="1.0.5" externallink="https://www.domoticz.com/forum/viewtopic.php?f=34&t=34986">
+<plugin key="RootedToonPlug" name="Rooted Toon" author="Hansaplast31" version="1.0.6" externallink="https://www.domoticz.com/forum/viewtopic.php?f=34&t=34986">
     <description>
         <h2>Rooted Toon</h2><br/>
         <ul style="list-style-type:square">
@@ -300,7 +300,7 @@ class BasePlugin:
 
                 if (zwaveDevInfo['internalAddress']==self.ia_ernt):
                     zwaveReceivedNtFlow=zwaveDevInfo['CurrentElectricityFlow']
-                    zwaveReceiveddNtQ=zwaveDevInfo['CurrentElectricityQuantity']
+                    zwaveReceivedNtQ=zwaveDevInfo['CurrentElectricityQuantity']
                     Domoticz.Debug('elec_received_nt: %s, %s' % (zwaveReceivedNtFlow,zwaveReceivedNtQ) )
 
                 if (zwaveDevInfo['internalAddress']==self.ia_erlt):
