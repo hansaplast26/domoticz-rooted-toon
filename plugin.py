@@ -3,7 +3,7 @@
 # Author: GizMoCuz
 #
 """
-<plugin key="RootedToonPlug" name="Rooted Toon" author="Hansaplast31" version="1.0.6" externallink="https://www.domoticz.com/forum/viewtopic.php?f=34&t=34986">
+<plugin key="RootedToonPlug" name="Rooted Toon" author="Hansaplast31" version="1.0.7" externallink="https://www.domoticz.com/forum/viewtopic.php?f=34&t=34986">
     <description>
         <h2>Rooted Toon</h2><br/>
         <ul style="list-style-type:square">
@@ -484,6 +484,9 @@ def UpdateDevice(Unit, nValue, sValue, TimedOut=0, AlwaysUpdate=False):
     # Make sure that the Domoticz device still exists (they can be deleted) before updating it
     if (Unit in Devices):
         if (Devices[Unit].nValue != nValue) or (Devices[Unit].sValue != sValue) or (Devices[Unit].TimedOut != TimedOut):
-            Devices[Unit].Update(nValue=nValue, sValue=str(sValue), TimedOut=TimedOut)
-            Domoticz.Debug("Update "+str(nValue)+":'"+str(sValue)+"' ("+Devices[Unit].Name+")")
+            try:
+                Devices[Unit].Update(nValue=nValue, sValue=str(sValue), TimedOut=TimedOut)
+                Domoticz.Debug("Update "+str(nValue)+":'"+str(sValue)+"' ("+Devices[Unit].Name+")")
+            except:
+                Domoticz.Log("Update of device failed: "+str(Unit)+"!")
     return
